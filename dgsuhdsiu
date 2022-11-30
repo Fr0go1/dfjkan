@@ -1,0 +1,282 @@
+-- TELEPORT BYPASS
+if game:GetService("Players").LocalPlayer.Character.Services:FindFirstChild("Client") then
+    game:GetService("Players").LocalPlayer.Character.Services["Client"].Disabled = true
+end
+ 
+-- VARIABLES
+local mobs = {} -- MOBS TABLE
+getgenv().mob = nil -- SELECTED MOB
+ 
+-- MOBS
+for _,v in pairs(game:GetService("Workspace").Monster.Mon:GetChildren()) do -- LOOPS THROUGH ALL MOBS
+    insert = true -- VALUE TO CHECK THE MOB
+    for _,v2 in pairs(mobs) do if v2 == v.Name then insert = false end end -- CHECKS IF MOB IS ALREADY IN THE TABLE
+    if insert then table.insert(mobs, v.Name) end -- IF THE MOB ISNT INSERTED THEN INSERT IT
+end
+ 
+-- UI LIBRARY
+ 
+local Library = loadstring(game:HttpGet("https:/raw.githubusercontent.com/Attrixx/Scandia/main/KavoUiLib.lua"))() -- GETS THE UI LIBRARY
+local Window = Library.CreateLib("Legacy Kom v1", "DarkTheme") -- CREATES THE WINDOW
+ 
+-- MAIN
+local Main = Window:NewTab("Main") -- CREATES THE MAIN TAB
+local Main = Main:NewSection("Main") -- CREATES THE MOB FARM SECTION
+
+local Farm = Window:NewTab("Farm") -- CREATES THE MAIN TAB
+local MobFarmSection = Farm:NewSection("Mob Farm") -- CREATES THE MOB FARM SECTION
+
+local Stats = Window:NewTab("Farm") -- CREATES THE MAIN TAB
+local StatsSection = Stats:NewSection("Mob Farm") -- CREATES THE MOB FARM SECTION
+
+local mobdropdown = MobFarmSection:NewDropdown("Choose Mob", "Chooses the mob to autofarm", mobs, function(v) -- CREATES A MOB DROPDOWN TO CHOOSE THE MOBS (USES THE TABLE FROM THE MOBS SECTION ABOVE)
+    getgenv().mob = v
+end)
+ 
+MobFarmSection:NewToggle("Start Mob Farm", "Toggles the autofarming of the mobs", function(v) -- CREATES THE START / STOP TOGGLE
+    getgenv().autofarmmobs = v
+    while wait() do -- INFINITE LOOP
+        if getgenv().autofarmmobs == false then return end -- IF THE TOGGLE IS OFF THEN STOP THE LOOP
+        if getgenv().mob == nil then -- IF THE MOB ISNT SELECTED
+            game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Error!", -- NOTIFICACTION LABEL
+                Text = "You havent selected a mob with the dropdown above\nUntoggle this toggle!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+            getgenv().autofarmmobs = false -- TURN OFF THE AUTO FARM
+            return -- MAKE SURE IT DOESNT EXECUTE ANYTHING UNDER // FULLY TURN OFF THE LOOP
+        end
+        local mob = game:GetService("Workspace").Monster.Mon:FindFirstChild(getgenv().mob)
+        if mob == nil then
+            game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Info!", -- NOTIFICACTION LABEL
+                Text = "There is currently no spawned mobs of this type!\nJust wait until they spawn", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+            while wait() do -- LOOP WHICH REPEATS UNTIL THE UNTIL IS TRUE / DONE
+                wait() -- WAIT SO WE DONT CRASH
+                if getgenv().autofarmmobs == false then return end -- IF THE TOGGLE IS OFF THEN STOP THE LOOP
+                if game:GetService("Workspace").Monster.Mon:FindFirstChild(getgenv().mob) ~= nil then break; end
+            end -- IF THE MOB IS SPAWNED THEN GO ON WITH THE AUTOFARM
+        else
+            local mob2 = mob
+            while wait() do
+                mob = game:GetService("Workspace").Monster.Mon:FindFirstChild(getgenv().mob)
+                if mob ~= mob2 then break; end
+                if getgenv().autofarmmobs == false then return end -- IF THE TOGGLE IS OFF THEN STOP THE LOOP
+                if mob ~= nil then
+                    if mob:FindFirstChild("Humanoid") then
+                        if mob.Humanoid.Health == 0 then wait(0.1) mob:Destroy() break; end -- IF THE MOB IS DEAD THEN JUST DESTROY IT FOR FASTER FARMING
+                    end
+                    if mob:FindFirstChild("HumanoidRootPart") then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0,0,2) -- TELEPORT TO THE MOB
+                    end
+                end
+                wait() -- WAIT SO WE DONT CRASH
+            end
+        end
+    end
+end)
+ 
+-- UPDATING THE MOBS
+ 
+game:GetService("Workspace").Monster.Mon.ChildAdded:Connect(function() -- WHEN MOB SPAWNS
+    for _,v2 in pairs(mobs) do table.remove(mobs, _) end -- REMOVES ALL THE OLD MOBS
+    -- ADDS THE NEW MOBS
+    for _,v in pairs(game:GetService("Workspace").Monster.Mon:GetChildren()) do -- LOOPS THROUGH ALL MOBS
+        insert = true -- VALUE TO CHECK THE MOB
+        for _,v2 in pairs(mobs) do if v2 == v.Name then insert = false end end -- CHECKS IF MOB IS ALREADY IN THE TABLE
+        if insert then table.insert(mobs, v.Name) end -- IF THE MOB ISNT INSERTED THEN INSERT IT
+    end
+    mobdropdown:Refresh(mobs)
+end)
+ 
+game:GetService("Workspace").Monster.Mon.ChildRemoved:Connect(function() -- WHEN MOB DIES / GETS REMOVED
+    for _,v2 in pairs(mobs) do table.remove(mobs, _) end -- REMOVES ALL THE OLD MOBS
+    -- ADDS THE NEW MOBS
+    for _,v in pairs(game:GetService("Workspace").Monster.Mon:GetChildren()) do -- LOOPS THROUGH ALL MOBS
+        insert = true -- VALUE TO CHECK THE MOB
+        for _,v2 in pairs(mobs) do if v2 == v.Name then insert = false end end -- CHECKS IF MOB IS ALREADY IN THE TABLE
+        if insert then table.insert(mobs, v.Name) end -- IF THE MOB ISNT INSERTED THEN INSERT IT
+    end
+    mobdropdown:Refresh(mobs)
+end)
+
+Main:NewButton("ESP", "See Players Through Walls", function()
+    local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local player_cache = {}
+
+task.spawn(function()
+
+    local DestroyHighlight = function(highlight)
+        if highlight then
+            highlight:Destroy()
+        end
+    end
+
+    Players.ChildRemoved:Connect(function(player)
+        local temp = player_cache[player]
+        if not temp then return end
+        player_cache[player] = nil
+        DestroyHighlight(temp.Highlight)
+        temp = nil
+    end)
+
+    local Character;
+    local Current_Players;
+    while task.wait() do
+        Current_Players = Players:GetPlayers()
+
+        for _,player in next, Current_Players do
+            if player ~= LocalPlayer then
+                if player_cache[player] then
+                    Character = player.Character
+                    player_cache[player]["Highlight"] = Character and Character:FindFirstChild("Highlight")
+                else
+                    player_cache[player] = {}
+                end
+            end
+        end
+    end
+
+end)
+
+local setHighlightVisible = function(highlight, bool)
+    if highlight then
+        highlight.OutlineTransparency = (bool and 0.4) or 1
+        highlight.FillTransparency = (bool and 0.6) or 1
+    end
+end
+
+local createHighlight = function(player, on_top, visible)
+    local Highlight = Instance.new("Highlight")
+    Highlight.Name = "Highlight"
+    Highlight.Parent = player.Character
+    Highlight.FillTransparency = (visible and 1) or 1
+    Highlight.OutlineTransparency = (visible and 0) or 1
+    Highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    Highlight.DepthMode = (on_top and 0) or 1
+player_cache[player].Highlight = Highlight
+end
+
+local handlePlayerESP = function(player, data)
+    if not player.Character then setHighlightVisible(data.Highlight, false) return end
+
+    if not data.Highlight then
+        createHighlight(player, true, true)
+    end
+end
+
+local updateESP = function()
+    for player, data in next, player_cache do
+        handlePlayerESP(player, data)
+    end
+end
+
+task.spawn(function()
+    while task.wait() do
+        updateESP()
+    end
+end)
+end)
+
+Main:NewKeybind("RightCTRL To Toggle UI", "RightCTRL To Toggle UI", Enum.KeyCode.RightControl, function()
+	Library:ToggleUI()
+end)
+
+MobFarmSection:NewToggle("Auto Hit", "Auto Hit", function(state)
+    if state then
+        getgenv().HitNigga = true
+        while HitNigga do
+            local args = {
+                [1] = "FS_None_M1"
+            }
+            game:GetService("ReplicatedStorage").Remotes.Functions.SkillAction:InvokeServer(unpack(args))
+            wait()
+        end
+    else
+        getgenv().HitNigga = false
+    end
+end)
+
+
+------------------------------------------------------------------~~~This Section Is The Stats~~~----------------------------------------------------------------------------------------------------
+StatsSection:NewToggle("Melee Stat", "Auto Stat", function(state)
+    if state then
+        getgenv().melee = true
+            while melee do
+                local args = {
+                    [1] = "Melee",
+                    [2] = 1
+                    }
+            
+                    game:GetService("Players").LocalPlayer.PlayerGui.Stats.Button.StatsFrame.RemoteEvent:FireServer(unpack(args))
+                    wait()
+                end
+            end        
+        end
+    else
+        getgenv().melee = false
+    end
+end)
+
+StatsSection:NewToggle("Sword Stat", "Auto Stat", function(state)
+    if state then
+        getgenv().sword = true
+            while sword do
+                local args = {
+                    [1] = "Sword",
+                    [2] = 1
+                    }
+            
+                    game:GetService("Players").LocalPlayer.PlayerGui.Stats.Button.StatsFrame.RemoteEvent:FireServer(unpack(args))
+                    wait()
+                end
+            end        
+        end
+    else
+        getgenv().sword = false
+    end
+end)
+
+StatsSection:NewToggle("Defense Stat", "Auto Stat", function(state)
+    if state then
+        getgenv().defense = true
+            while defense do
+                local args = {
+                    [1] = "Defense",
+                    [2] = 1
+                    }
+            
+                    game:GetService("Players").LocalPlayer.PlayerGui.Stats.Button.StatsFrame.RemoteEvent:FireServer(unpack(args))
+                    wait()
+                end
+            end        
+        end
+    else
+        getgenv().defense = false
+    end
+end)
+
+StatsSection:NewToggle("Power Fruit Stat", "Auto Stat", function(state)
+    if state then
+        getgenv().powerfruit = true
+            while powerfruit do
+                local args = {
+                    [1] = "Power Fruit",
+                    [2] = 1
+                    }
+            
+                    game:GetService("Players").LocalPlayer.PlayerGui.Stats.Button.StatsFrame.RemoteEvent:FireServer(unpack(args))
+                    wait()
+                end
+            end        
+        end
+    else
+        getgenv().powerfruit = false
+    end
+end)
